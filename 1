@@ -1,0 +1,48 @@
+using System;
+using Avalonia;
+using NUnit.Framework;
+using static Manipulation.Manipulator;
+
+namespace Manipulation;
+
+public static class AnglesToCoordinatesTask
+{
+	public static Point[] GetJointPositions(double shoulder, double elbow, double wrist)
+	{
+		var angleForearmOX = shoulder + elbow - Math.PI;
+        var anglePalmOX = shoulder + elbow - Math.PI + wrist - Math.PI;
+        var elbowPos = new Point(UpperArm * Math.Cos(shoulder), UpperArm * Math.Sin(shoulder));
+		var wristPos = new Point(elbowPos.X + Forearm * Math.Cos(angleForearmOX),
+			elbowPos.Y + Forearm * Math.Sin(angleForearmOX));
+        var palmEndPos = new Point(wristPos.X + Palm * Math.Cos(anglePalmOX), wristPos.Y + Palm * Math.Sin(anglePalmOX));
+        return new[]
+		{
+			elbowPos,
+			wristPos,
+			palmEndPos
+		};
+	}
+}
+
+[TestFixture]
+public class AnglesToCoordinatesTask_Tests
+{
+	[TestCase(Math.PI / 2, Math.PI / 2, Math.PI, Forearm + Palm, UpperArm)]
+    [TestCase(Math.PI / 2, Math.PI, Math.PI, 0, UpperArm + Forearm + Palm)]
+    [TestCase(Math.PI / 2, Math.PI / 2, Math.PI / 2, Forearm, UpperArm - Palm)]
+	[TestCase(0, Math.PI, Math.PI, UpperArm + Forearm + Palm, 0)]
+    public void TestGetJointPositions(double shoulder, double elbow, double wrist, double palmEndX, double palmEndY)
+	{
+		var joints = AnglesToCoordinatesTask.GetJointPositions(shoulder, elbow, wrist);
+        var distanceToElbow = joints[0].X * joints[0].X + joints[0].Y * joints[0].Y;
+        var distanceElbowToWrist = (joints[1].X - joints[0].X) * (joints[1].X - joints[0].X)
+            + (joints[1].Y - joints[0].Y) * (joints[1].Y - joints[0].Y);
+        var distanceWristToEnd = (joints[2].X - joints[1].X) * (joints[2].X - joints[1].X)
+            + (joints[2].Y - joints[1].Y) * (joints[2].Y - joints[1].Y);
+        Assert.AreEqual(palmEndX, joints[2].X, 1e-5, "palm endX");
+		Assert.AreEqual(palmEndY, joints[2].Y, 1e-5, "palm endY");
+		Assert.AreEqual(UpperArm * UpperArm, distanceToElbow, 1e-5);
+        Assert.AreEqual(Forearm * Forearm, distanceElbowToWrist, 1e-5);
+        Assert.AreEqual(Palm * Palm, distanceWristToEnd, 1e-5);
+    }
+}
